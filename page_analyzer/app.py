@@ -1,7 +1,6 @@
 import os
 
 import psycopg2
-from check_urls import check
 from dotenv import load_dotenv
 from flask import (
     Flask,
@@ -79,13 +78,3 @@ def create_url():
     finally:
         conn.close()
     return redirect_url
-
-
-@app.route('/urls/<int:id>/checks', methods=['POST'])  # ДОПИСАТЬ ФУНКЦИЮ
-def check_url(id):
-    url = repo.get_url_id(id)
-    if url:
-        result = check(url)
-        if 'error':
-            return flash('URL не найден', 'alert-danger')
-    return render_template('url.html', url=url)
