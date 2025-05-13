@@ -9,9 +9,12 @@ class UrlsRepository:
         with self.conn.cursor as cur:
             cur.execute(
                 """
-                SELECT urls.id, urls.name, urls.created_at, url_checks.status_code 
+                SELECT urls.id, urls.name, 
+                MAX(url_checks.created_at) AS last_checked, 
+                MAX(url_checks.status_code) AS last_status_code
                 FROM urls
                 LEFT JOIN url_checks ON urls.id = url_checks.url_id
+                GROUB BY urls.id
                 ORDER BY urls.created_at DESC
                 """
             )
@@ -44,12 +47,34 @@ class UrlsRepository:
     def get_url_checks(self, url_id):
         with self.conn.cursor as cur:
             cur.execute(
+                "SELECT * FROM urls WHERE id = %s", [url_id]
+            )
+            url_data = cur.fetchone()
+            cur.execute(
                 """
-                SELECT id, status_code, h1, title, description, created_at
-                FROM url_checks
+                SELECT * FROM url_checks
                 WHERE url_id = %s
                 ORDER BY created_at DESC
                 """,
                 [url_id]
             )
-            return cur.fetchall()
+            checks = cur.fetchall()
+            return url_data, checks
+
+    def save_check(self, url_id, data):
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO url_checks ("
+                "url_id, status_code, h1, title, description, created_at"
+                ")" 
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                [
+                    url_id,
+                    data['status_code'],
+                    data['h1'],
+                    data['title'],
+                    data['description'],
+                    datetime.now(),
+                ],
+            )
+            self.conn.commit()

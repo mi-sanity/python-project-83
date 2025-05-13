@@ -11,9 +11,10 @@ from flask import (
     url_for,
 )
 from psycopg2.extras import DictCursor
-from repository import UrlsRepository
-from setting_url import setting_format_url
-from validator import validate
+from page_analyzer.repository import UrlsRepository
+from page_analyzer.seo_analysis import seo_data
+from page_analyzer.setting_url import setting_format_url
+from page_analyzer.validator import validate
 
 load_dotenv()
 
@@ -43,7 +44,12 @@ def show_url(id):
     conn.close()
     if url is None:
         return render_template('error_page_404.html', url=url)
-    return render_template('url.html', url=url)
+    
+    try:
+        url_data, checks = repo.get_url_checks(id)
+    finally:
+        conn.close()
+    return render_template('url.html', url=url_data, checks=checks)
 
 
 @app.route('/urls', methods=['POST'])
@@ -64,10 +70,12 @@ def create_url():
             redirect_url = redirect(
                 url_for('show_url', url_id=url.get('id')),
             )
-        
+
         flash('Страница успешно добавлена', 'alert-success')
-        redirect_url = redirect(url_for('show_url'), url_id=repo.save_url(normal_url))
-    
+        redirect_url = redirect(
+            url_for('show_url'), url_id=repo.save_url(normal_url)
+        )
+
     except Exception as e:
         conn.rollback()
         flash(
@@ -78,3 +86,21 @@ def create_url():
     finally:
         conn.close()
     return redirect_url
+
+
+@app.route('/urls/<int:id>/checks', methods=['POST'])
+def create_check(id):
+    url = repo.get_url_id(id)
+
+    if url:
+        data = seo_data(url)
+        if 'error' not in data:
+            repo.save_check(id, data)
+            flash('Страница успешно проверена', 'alert-success')
+        else:
+            flash(data['error'], 'alert-danger')
+    else:
+        flash('URL не найден', 'alert-danger')
+
+    conn.close()
+    return redirect(url_for('show_url', id=id))
