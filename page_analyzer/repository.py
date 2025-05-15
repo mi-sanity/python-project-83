@@ -6,22 +6,24 @@ class UrlsRepository:
         self.conn = conn
 
     def get_all_urls(self):
-        with self.conn.cursor as cur:
+        with self.conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT urls.id, urls.name, 
-                MAX(url_checks.created_at) AS last_checked, 
-                MAX(url_checks.status_code) AS last_status_code
+                SELECT 
+                    urls.id, 
+                    urls.name, 
+                    MAX(url_checks.created_at) AS last_checked, 
+                    MAX(url_checks.status_code) AS last_status_code
                 FROM urls
                 LEFT JOIN url_checks ON urls.id = url_checks.url_id
-                GROUB BY urls.id
-                ORDER BY urls.created_at DESC
+                GROUP BY urls.id, urls.name
+                ORDER BY urls.id DESC
                 """
             )
             return cur.fetchall()
 
     def get_url_id(self, url_id):
-        with self.conn.cursor as cur:
+        with self.conn.cursor() as cur:
             cur.execute(
                 "SELECT * FROM urls WHERE id = %s", [url_id]
             )
@@ -45,7 +47,7 @@ class UrlsRepository:
             return cur.fetchone()
 
     def get_url_checks(self, url_id):
-        with self.conn.cursor as cur:
+        with self.conn.cursor() as cur:
             cur.execute(
                 "SELECT * FROM urls WHERE id = %s", [url_id]
             )
@@ -74,7 +76,7 @@ class UrlsRepository:
                     data['h1'],
                     data['title'],
                     data['description'],
-                    datetime.now(),
+                    datetime.now().strftime("%Y-%m-%d"),
                 ],
             )
             self.conn.commit()

@@ -3,10 +3,16 @@ import validators
 
 def validate(url_data):
     errors = {}
-    if not url_data.get('name'):
+
+    if not url_data:
         errors['name'] = 'Заполните это поле'
-    if len(url_data.get('name')) > 255:
+        return errors
+
+    if len(url_data) > 255:
         errors['name'] = 'URL превышает 255 символов'
-    if validators.url(url_data) is not True:
+        return errors
+
+    if not validators.url(url_data):
         errors['name'] = 'Некорректный URL'
+
     return errors
